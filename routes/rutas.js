@@ -8,7 +8,7 @@ function routerApi(app) {
   //app.use('/pinteres',pinteresRouter);
   //app.use('/review',reviewRouter);
   app.use('/servicio',serviciosRouter);
-  //app.use('/user',userRouter);
+  app.use('/user',userRouter);
   //app.use('/zona',zonaRouter);
 }
 
