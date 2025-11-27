@@ -1,3 +1,18 @@
+## Antes de iniciar
+
+Primero corre el comando:
+
+### `npm i`
+
+Después crea el archivo .env y agrega la variable de MONGODB:
+
+###`MONGODB=TUCONNECT`
+
+Y solamente corre `npm run api` o `npm start` para correr la API o el frontend.
+o
+### `npm run dev`
+Para correr ambas.
+
 ## Scripts Disponibles
 
 In the project directory, you can run:
