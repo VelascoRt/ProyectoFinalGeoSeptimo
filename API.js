@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 const port = 3000;
+// dotenv
+require('dotenv').config();
 const routerApi = require('./routes/rutas');
 // Importar MongoDB
 const cors = require('cors');
@@ -22,9 +24,9 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // VICTOR
-mongoose.connect('mongodb+srv://atervictorgm:pass123@cluster712.y2fku68.mongodb.net/?retryWrites=true&w=majority&appName=AppExpress')
+mongoose.connect(process.env.MONGODB)
 .then(()=> console.log('Conexion a MongoDB exitosa'))
-.catch(err => console.error('No se puede conectar a MongoDB', err))
+.catch(err => console.error('No se puede conectar a MongoDB', err));
 
 // Listen
 app.listen(port, () => {
