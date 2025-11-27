@@ -6,7 +6,7 @@ Primero corre el comando:
 
 Después crea el archivo .env y agrega la variable de MONGODB:
 
-###`MONGODB=TUCONNECT`
+### `MONGODB=TUCONNECT`
 
 Y solamente corre `npm run api` o `npm start` para correr la API o el frontend.
 o
