@@ -57,29 +57,37 @@ See the section about [deployment](https://facebook.github.io/create-react-app/d
 Puntos de interés
 Ejemplo:
 
-`{    
+```
+{    
     "nombre": "Plaza Mayor",
     "descripcion": "Esta es la famosa plaza mayor de León Guanajuato, es una plaza en León Guanajuato",
     "location" : {
         "type" : "Point",
         "coordinates": [-101.69524669647218, 21.15743637827049]
     }
-}`
+}
+```
 
 ### Review
 Reseñas de cada Servicio, ocupa un usuario y un servicio
 Ejemplo:
-`{
+
+```
+{
     "user" : "6928db0d57f5edc5e9d084c4",
     "calificacion" : 5,
     "opinion" : "Es una buena plaza en mi opinion",
     "servicioTuristico" : "6927e36098685bd72dbd406e"
-}`
+}
+
+```
 
 ### Servicio
 
 Servicio turistico, ocupa coordenadas.
-`{    
+
+```
+{    
     "id": 1,
     "nombre": "Plaza Mayor",
     "descripcion": "Esta es la famosa plaza mayor de León Guanajuato, es una plaza en León Guanajuato",
@@ -87,23 +95,29 @@ Servicio turistico, ocupa coordenadas.
         "type" : "Point",
         "coordinates": [-101.69524669647218, 21.15743637827049]
     }
-}`
+}
+```
 
 ### User
 
 Usuario
 Ejemplo:
-`{
+
+```
+{
     "username" : "atervictor",
     "password" : "ADS131312DASDASDMKÑ"
-}`
+}
+```
 
 ### Zona
 
 Zona, puedes escoger entre poligonos, cuadrado, circulo y marcador.
 
 Ejemplo:
-`{
+
+```
+{
   "nombre": "Zona Arqueológica Principal",
   "descripcion": "Polígono de prueba para un área arqueológica.",
   "tipo": "polygon",
@@ -116,4 +130,5 @@ Ejemplo:
       { "lat": 19.4321, "lng": -99.1331 }
     ]
   ]
-}`
+}
+```
