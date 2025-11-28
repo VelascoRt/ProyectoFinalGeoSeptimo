@@ -48,13 +48,72 @@ The build is minified and the filenames include the hashes.\
 Your app is ready to be deployed!
 
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
 ### `npm run eject`
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Modelos
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### PInteres
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Puntos de interés
+Ejemplo:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+`{    
+    "nombre": "Plaza Mayor",
+    "descripcion": "Esta es la famosa plaza mayor de León Guanajuato, es una plaza en León Guanajuato",
+    "location" : {
+        "type" : "Point",
+        "coordinates": [-101.69524669647218, 21.15743637827049]
+    }
+}`
+
+### Review
+Reseñas de cada Servicio, ocupa un usuario y un servicio
+Ejemplo:
+`{
+    "user" : "6928db0d57f5edc5e9d084c4",
+    "calificacion" : 5,
+    "opinion" : "Es una buena plaza en mi opinion",
+    "servicioTuristico" : "6927e36098685bd72dbd406e"
+}`
+
+### Servicio
+
+Servicio turistico, ocupa coordenadas.
+`{    
+    "id": 1,
+    "nombre": "Plaza Mayor",
+    "descripcion": "Esta es la famosa plaza mayor de León Guanajuato, es una plaza en León Guanajuato",
+    "location" : {
+        "type" : "Point",
+        "coordinates": [-101.69524669647218, 21.15743637827049]
+    }
+}`
+
+### User
+
+Usuario
+Ejemplo:
+`{
+    "username" : "atervictor",
+    "password" : "ADS131312DASDASDMKÑ"
+}`
+
+### Zona
+
+Zona, puedes escoger entre poligonos, cuadrado, circulo y marcador.
+
+Ejemplo:
+`{
+  "nombre": "Zona Arqueológica Principal",
+  "descripcion": "Polígono de prueba para un área arqueológica.",
+  "tipo": "polygon",
+  "coordenadas": [
+    [
+      { "lat": 19.4321, "lng": -99.1331 },
+      { "lat": 19.4331, "lng": -99.1340 },
+      { "lat": 19.4315, "lng": -99.1345 },
+      { "lat": 19.4308, "lng": -99.1334 },
+      { "lat": 19.4321, "lng": -99.1331 }
+    ]
+  ]
+}`
