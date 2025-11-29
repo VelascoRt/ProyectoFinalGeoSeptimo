@@ -1,4 +1,4 @@
-## Antes de iniciar
+cd ## Antes de iniciar
 
 Primero corre el comando:
 
