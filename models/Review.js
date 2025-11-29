@@ -1,3 +1,5 @@
+// models/Review.js
+
 const mongoose = require('mongoose');
 
 const ReviewSchema = new mongoose.Schema({
@@ -24,7 +26,7 @@ const ReviewSchema = new mongoose.Schema({
     },
     servicioTuristico: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'ServicioTuristico',
+        ref: 'PInteres', // <-- CORRECCIÓN: Referencia al modelo de Puntos de Interés
         required: true
     }
 });

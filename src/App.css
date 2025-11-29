@@ -1,38 +1,61 @@
+/* ------------------------------------------- */
+/* 1. Estilos Base y Limpieza de Boilerplate   */
+/* ------------------------------------------- */
 .App {
-  text-align: center;
+    /* Centra la aplicación y asegura que ocupe todo el espacio */
+    text-align: center;
+    min-height: 100vh;
+    background-color: #f8f9fa; /* Color de fondo claro */
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* Limpieza de estilos no usados del template de React */
+.App-logo, .App-header {
+    display: none;
+}
+/* La regla @keyframes App-logo-spin ha sido eliminada para evitar el error de sintaxis */
+
+
+/* Estilos para el contenedor principal de la vista */
+.content {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto; /* Centrar el contenido */
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+/* ------------------------------------------- */
+/* 2. Estilos Esenciales de Leaflet            */
+/* ------------------------------------------- */
+
+/* Importar los estilos CSS de la librería Leaflet */
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+
+/* Regla crítica para el contenedor de Leaflet. Aunque MapComponent define 
+   un height, esta regla asegura el comportamiento correcto de la librería. */
+.leaflet-container {
+    /* Asegura que el mapa se muestre correctamente dentro de su contenedor */
+    width: 100%;
+    /* La altura específica se define en MapComponent.js, pero esta clase es vital. */
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+/* ------------------------------------------- */
+/* 3. Estilos Específicos de Páginas           */
+/* ------------------------------------------- */
+
+.principal-page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
-.App-link {
-  color: #61dafb;
+/* Estilos responsive para la Vista Principal */
+.principal-page > div:last-child {
+    display: flex;
+    flex-direction: row; /* Desktop */
+    gap: 20px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+@media (max-width: 900px) {
+    .principal-page > div:last-child {
+        flex-direction: column; /* Mobile/Tablet */
+    }
 }
