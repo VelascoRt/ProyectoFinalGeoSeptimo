@@ -8,7 +8,7 @@ const routerApi = require('./routes/rutas');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
-
+const { logError, errorHandler,  notFoundHandler, asyncErrorHandler } = require('./middlewares/errorHandler');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -19,6 +19,9 @@ app.get("/", (req,res) => {
 
 // Routers
 routerApi(app);
+app.use(notFoundHandler);
+app.use(logError);       
+app.use(errorHandler); 
 // MongoDB
 app.use(cors());
 app.use(bodyParser.json());
