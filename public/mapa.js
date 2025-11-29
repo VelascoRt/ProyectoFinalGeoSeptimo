@@ -6,11 +6,13 @@ let puntosInteres = [];
 let servicios = [];
 let zonas = [];
 let drawingMode = false;
-let currentLayer = null;
-let drawControl = null;
-let selectedTipo = 'punto';
+let currentAction = null;
 let markersLayer = L.layerGroup();
 let zonasLayer = L.layerGroup();
+
+// Variables para el dibujo de polígonos
+let polygonPoints = [];
+let currentPolygon = null;
 
 // Iconos personalizados
 const createCustomIcon = (color, iconClass) => {
@@ -23,481 +25,7 @@ const createCustomIcon = (color, iconClass) => {
 };
 
 const iconPuntoInteres = createCustomIcon('#e74c3c', 'fa-landmark');
-const iconReview = createCustomIcon('#f39c12', 'fa-star');
 const iconServicio = createCustomIcon('#3498db', 'fa-concierge-bell');
-
-document.addEventListener('DOMContentLoaded', function() {
-    currentUser = JSON.parse(localStorage.getItem('currentUser'));
-    if (!currentUser) {
-        window.location.href = '/';
-        return;
-    }
-
-    initializeMap();
-    loadData();
-    setupEventListeners();
-    initializeDrawControl();
-});
-
-function initializeMap() {
-    map = L.map('map').setView([19.4326, -99.1332], 13); // Ciudad de México
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    markersLayer.addTo(map);
-    zonasLayer.addTo(map);
-}
-
-function initializeDrawControl() {
-    const drawControl = new L.Control.Draw({
-        draw: {
-            polygon: {
-                shapeOptions: {
-                    color: '#3498db',
-                    fillColor: '#3498db',
-                    fillOpacity: 0.2
-                }
-            },
-            polyline: false,
-            circle: false,
-            rectangle: {
-                shapeOptions: {
-                    color: '#e74c3c',
-                    fillColor: '#e74c3c',
-                    fillOpacity: 0.2
-                }
-            },
-            circlemarker: false,
-            marker: {
-                icon: selectedTipo === 'punto' ? iconPuntoInteres : iconServicio
-            }
-        },
-        edit: {
-            featureGroup: markersLayer,
-            remove: true
-        }
-    });
-    
-    map.addControl(drawControl);
-
-    // Eventos para dibujar
-    map.on(L.Draw.Event.CREATED, function (e) {
-        const layer = e.layer;
-        showCreationForm(layer);
-    });
-
-    map.on(L.Draw.Event.EDITED, function (e) {
-        const layers = e.layers;
-        layers.eachLayer(function (layer) {
-            updateLayerInDatabase(layer);
-        });
-    });
-
-    map.on(L.Draw.Event.DELETED, function (e) {
-        const layers = e.layers;
-        layers.eachLayer(function (layer) {
-            deleteLayerFromDatabase(layer);
-        });
-    });
-}
-
-function showCreationForm(layer) {
-    const form = `
-        <div class="creation-form">
-            <h3>Crear ${selectedTipo === 'punto' ? 'Punto de Interés' : 'Servicio'}</h3>
-            <form id="creationForm">
-                <div class="form-group">
-                    <label for="nombre">Nombre:</label>
-                    <input type="text" id="nombre" required>
-                </div>
-                <div class="form-group">
-                    <label for="descripcion">Descripción:</label>
-                    <textarea id="descripcion" required></textarea>
-                </div>
-                <div class="button-group">
-                    <button type="submit" class="btn btn-success">Guardar</button>
-                    <button type="button" class="btn btn-secondary" onclick="cancelCreation()">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    `;
-
-    const popup = L.popup()
-        .setLatLng(layer.getLatLng ? layer.getLatLng() : layer.getBounds().getCenter())
-        .setContent(form)
-        .openOn(map);
-
-    document.getElementById('creationForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        saveNewLocation(layer, popup);
-    });
-}
-
-async function saveNewLocation(layer, popup) {
-    const nombre = document.getElementById('nombre').value;
-    const descripcion = document.getElementById('descripcion').value;
-    
-    let locationData = {
-        nombre,
-        descripcion
-    };
-
-    if (layer instanceof L.Marker) {
-        const latlng = layer.getLatLng();
-        locationData.location = {
-            type: 'Point',
-            coordinates: [latlng.lng, latlng.lat]
-        };
-
-        try {
-            const endpoint = selectedTipo === 'punto' ? '/pinteres' : '/servicio';
-            const response = await fetch(API_BASE + endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(locationData)
-            });
-
-            if (response.ok) {
-                const newItem = await response.json();
-                layer._id = newItem._id;
-                layer.bindPopup(createPopupContent(newItem, selectedTipo));
-                markersLayer.addLayer(layer);
-                map.closePopup(popup);
-                updateTable();
-                showMessage('Ubicación creada exitosamente', 'success');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            showMessage('Error al crear la ubicación', 'error');
-        }
-    } else if (layer instanceof L.Polygon || layer instanceof L.Rectangle) {
-        // Guardar zona
-        const bounds = layer.getBounds();
-        const centro = bounds.getCenter();
-        
-        const zonaData = {
-            nombre,
-            descripcion,
-            tipo: layer instanceof L.Polygon ? 'polygon' : 'rectangle',
-            centro: {
-                lat: centro.lat,
-                lng: centro.lng
-            },
-            bounds: {
-                norte: bounds.getNorth(),
-                sur: bounds.getSouth(),
-                este: bounds.getEast(),
-                oeste: bounds.getWest()
-            }
-        };
-
-        try {
-            const response = await fetch(API_BASE + '/zona', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(zonaData)
-            });
-
-            if (response.ok) {
-                const newZona = await response.json();
-                layer._id = newZona._id;
-                layer.bindPopup(createZonaPopupContent(newZona));
-                zonasLayer.addLayer(layer);
-                map.closePopup(popup);
-                updateTable();
-                showMessage('Zona creada exitosamente', 'success');
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            showMessage('Error al crear la zona', 'error');
-        }
-    }
-}
-
-function createPopupContent(item, tipo) {
-    return `
-        <div class="popup-content">
-            <h4>${item.nombre}</h4>
-            <p>${item.descripcion}</p>
-            <div class="popup-actions">
-                <button onclick="editLocation('${item._id}', '${tipo}')" class="btn btn-warning btn-sm">
-                    <i class="fas fa-edit"></i> Editar
-                </button>
-                <button onclick="deleteLocation('${item._id}', '${tipo}')" class="btn btn-danger btn-sm">
-                    <i class="fas fa-trash"></i> Eliminar
-                </button>
-                <button onclick="verreviews('${item._id}', '${tipo}')" class="btn btn-primary btn-sm">
-                    <i class="fas fa-star"></i> Reseñas
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-function createZonaPopupContent(zona) {
-    return `
-        <div class="popup-content">
-            <h4>${zona.nombre}</h4>
-            <p>${zona.descripcion}</p>
-            <p><strong>Tipo:</strong> ${zona.tipo}</p>
-            <div class="popup-actions">
-                <button onclick="deleteZona('${zona._id}')" class="btn btn-danger btn-sm">
-                    <i class="fas fa-trash"></i> Eliminar
-                </button>
-            </div>
-        </div>
-    `;
-}
-
-async function loadData() {
-    try {
-        // Cargar puntos de interés
-        const [pinteresResponse, serviciosResponse, zonasResponse] = await Promise.all([
-            fetch(API_BASE + '/pinteres'),
-            fetch(API_BASE + '/servicio'),
-            fetch(API_BASE + '/zona')
-        ]);
-
-        puntosInteres = await pinteresResponse.json();
-        servicios = await serviciosResponse.json();
-        zonas = await zonasResponse.json();
-
-        addMarkersToMap();
-        addZonasToMap();
-        updateTable();
-    } catch (error) {
-        console.error('Error cargando datos:', error);
-    }
-}
-
-function addMarkersToMap() {
-    markersLayer.clearLayers();
-
-    // Puntos de interés
-    puntosInteres.forEach(punto => {
-        if (punto.location && punto.location.coordinates) {
-            const marker = L.marker([
-                punto.location.coordinates[1], 
-                punto.location.coordinates[0]
-            ], { icon: iconPuntoInteres }).addTo(markersLayer);
-            
-            marker._id = punto._id;
-            marker.bindPopup(createPopupContent(punto, 'punto'));
-        }
-    });
-
-    // Servicios
-    servicios.forEach(servicio => {
-        if (servicio.location && servicio.location.coordinates) {
-            const marker = L.marker([
-                servicio.location.coordinates[1], 
-                servicio.location.coordinates[0]
-            ], { icon: iconServicio }).addTo(markersLayer);
-            
-            marker._id = servicio._id;
-            marker.bindPopup(createPopupContent(servicio, 'servicio'));
-        }
-    });
-}
-
-function addZonasToMap() {
-    zonasLayer.clearLayers();
-
-    zonas.forEach(zona => {
-        let layer;
-        
-        switch(zona.tipo) {
-            case 'polygon':
-                if (zona.coordenadas && zona.coordenadas[0]) {
-                    const coordinates = zona.coordenadas[0].map(coord => [coord.lat, coord.lng]);
-                    layer = L.polygon(coordinates, { 
-                        color: '#3498db', 
-                        fillOpacity: 0.2,
-                        weight: 2
-                    });
-                }
-                break;
-            case 'rectangle':
-                if (zona.bounds) {
-                    layer = L.rectangle([
-                        [zona.bounds.norte, zona.bounds.oeste],
-                        [zona.bounds.sur, zona.bounds.este]
-                    ], { 
-                        color: '#e74c3c', 
-                        fillOpacity: 0.2,
-                        weight: 2
-                    });
-                }
-                break;
-        }
-        
-        if (layer) {
-            layer._id = zona._id;
-            layer.bindPopup(createZonaPopupContent(zona));
-            zonasLayer.addLayer(layer);
-        }
-    });
-}
-
-function setupEventListeners() {
-    // Selector de tipo
-    document.getElementById('tipoSelector').addEventListener('change', function(e) {
-        selectedTipo = e.target.value;
-    });
-
-    // Búsqueda
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-        filterTable(e.target.value);
-    });
-
-    // Logout
-    document.getElementById('btnLogout').addEventListener('click', function() {
-        localStorage.removeItem('currentUser');
-        window.location.href = '/';
-    });
-
-    // Botones de filtro
-    document.getElementById('btnMostrarTodo').addEventListener('click', function() {
-        markersLayer.addTo(map);
-        zonasLayer.addTo(map);
-    });
-
-    document.getElementById('btnOcultarTodo').addEventListener('click', function() {
-        map.removeLayer(markersLayer);
-        map.removeLayer(zonasLayer);
-    });
-}
-
-function updateTable() {
-    const tableBody = document.getElementById('locationsTable');
-    tableBody.innerHTML = '';
-
-    const allItems = [
-        ...puntosInteres.map(p => ({...p, tipo: 'Punto de Interés'})),
-        ...servicios.map(s => ({...s, tipo: 'Servicio'})),
-        ...zonas.map(z => ({...z, tipo: 'Zona'}))
-    ];
-
-    allItems.forEach(item => {
-        const row = document.createElement('tr');
-        
-        let locationInfo = '';
-        if (item.location) {
-            const coords = item.location.coordinates;
-            locationInfo = `Lat: ${coords[1].toFixed(4)}, Lng: ${coords[0].toFixed(4)}`;
-        } else if (item.centro) {
-            locationInfo = `Lat: ${item.centro.lat.toFixed(4)}, Lng: ${item.centro.lng.toFixed(4)}`;
-        }
-
-        row.innerHTML = `
-            <td>${item.nombre}</td>
-            <td>${item.descripcion}</td>
-            <td>${item.tipo}</td>
-            <td>${locationInfo}</td>
-        `;
-        tableBody.appendChild(row);
-    });
-}
-
-function filterTable(searchTerm) {
-    const rows = document.querySelectorAll('#locationsTable tr');
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm.toLowerCase()) ? '' : 'none';
-    });
-}
-
-// Funciones globales para los popups
-window.editLocation = async function(id, tipo) {
-    const nombre = prompt('Nuevo nombre:');
-    const descripcion = prompt('Nueva descripción:');
-    
-    if (nombre && descripcion) {
-        try {
-            const endpoint = tipo === 'punto' ? '/pinteres' : '/servicio';
-            const response = await fetch(API_BASE + endpoint + '/' + id, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ nombre, descripcion })
-            });
-
-            if (response.ok) {
-                loadData();
-                showMessage('Ubicación actualizada', 'success');
-            }
-        } catch (error) {
-            showMessage('Error al actualizar', 'error');
-        }
-    }
-};
-
-window.deleteLocation = async function(id, tipo) {
-    if (confirm('¿Estás seguro de eliminar esta ubicación?')) {
-        try {
-            const endpoint = tipo === 'punto' ? '/pinteres' : '/servicio';
-            const response = await fetch(API_BASE + endpoint + '/' + id, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                loadData();
-                showMessage('Ubicación eliminada', 'success');
-            }
-        } catch (error) {
-            showMessage('Error al eliminar', 'error');
-        }
-    }
-};
-
-window.deleteZona = async function(id) {
-    if (confirm('¿Estás seguro de eliminar esta zona?')) {
-        try {
-            const response = await fetch(API_BASE + '/zona/' + id, {
-                method: 'DELETE'
-            });
-
-            if (response.ok) {
-                loadData();
-                showMessage('Zona eliminada', 'success');
-            }
-        } catch (error) {
-            showMessage('Error al eliminar', 'error');
-        }
-    }
-};
-
-window.verreviews = function(id, tipo) {
-    localStorage.setItem('currentPlaceId', id);
-    localStorage.setItem('currentPlaceType', tipo);
-    window.location.href = '/reviews';
-};
-
-function showMessage(text, type) {
-    const messageDiv = document.getElementById('message');
-    messageDiv.textContent = text;
-    messageDiv.className = `message ${type}`;
-    messageDiv.style.display = 'block';
-    
-    setTimeout(() => {
-        messageDiv.style.display = 'none';
-    }, 3000);
-}
-
-window.cancelCreation = function() {
-    map.closePopup();
-};
-
-
-
-
 
 document.addEventListener('DOMContentLoaded', function() {
     currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -521,12 +49,10 @@ function initializeMap() {
     markersLayer.addTo(map);
     zonasLayer.addTo(map);
 
-    // Agregar controles de dibujo manualmente
     addDrawingTools();
 }
 
 function addDrawingTools() {
-    // Crear un control personalizado para las herramientas de dibujo
     const drawControl = L.control({ position: 'topright' });
 
     drawControl.onAdd = function(map) {
@@ -554,6 +80,7 @@ function addDrawingTools() {
                         <i class="fas fa-times"></i> Cancelar
                     </button>
                 </div>
+                <div id="drawing-instructions" class="drawing-instructions"></div>
             </div>
         `;
         return div;
@@ -563,71 +90,69 @@ function addDrawingTools() {
 }
 
 function setupEventListeners() {
-    // Eventos para los botones de herramientas
-    document.addEventListener('click', function(e) {
+    map.getContainer().addEventListener('click', function(e) {
         if (e.target.closest('.tool-btn')) {
             const button = e.target.closest('.tool-btn');
             const action = button.getAttribute('data-action');
-            handleToolAction(action);
+            handleToolAction(action, button);
         }
     });
 
-    // Búsqueda
     document.getElementById('searchInput').addEventListener('input', function(e) {
         filterTable(e.target.value);
     });
 
-    // Logout
     document.getElementById('btnLogout').addEventListener('click', function() {
         localStorage.removeItem('currentUser');
-        window.location.href = '/';
+        window.location.href = 'index.html';
     });
 
-    // Botones de filtro
     document.getElementById('btnMostrarTodo').addEventListener('click', function() {
         markersLayer.addTo(map);
         zonasLayer.addTo(map);
+        showMessage('Mostrando todos los elementos', 'info');
     });
 
     document.getElementById('btnOcultarTodo').addEventListener('click', function() {
         map.removeLayer(markersLayer);
         map.removeLayer(zonasLayer);
-    });
-
-    // Evento de clic en el mapa para creación
-    map.on('click', function(e) {
-        if (currentAction) {
-            handleMapClick(e);
-        }
+        showMessage('Ocultando todos los elementos', 'info');
     });
 }
 
-function handleToolAction(action) {
+function handleToolAction(action, button) {
+    cleanupDrawing();
+    
     currentAction = action;
     drawingMode = true;
     
-    // Remover clases activas de todos los botones
     document.querySelectorAll('.tool-btn').forEach(btn => {
         btn.classList.remove('active');
     });
     
-    // Agregar clase activa al botón clickeado
-    event.target.closest('.tool-btn').classList.add('active');
+    button.classList.add('active');
+    
+    const instructions = document.getElementById('drawing-instructions');
     
     switch(action) {
         case 'punto-interes':
-            showMessage('Haz clic en el mapa para colocar un Punto de Interés', 'info');
+            instructions.innerHTML = '<p>Haz clic en el mapa para colocar un Punto de Interés</p>';
+            setupMapClickForMarker('punto');
             break;
         case 'servicio':
-            showMessage('Haz clic en el mapa para colocar un Servicio', 'info');
+            instructions.innerHTML = '<p>Haz clic en el mapa para colocar un Servicio</p>';
+            setupMapClickForMarker('servicio');
             break;
         case 'review':
-            showMessage('Haz clic en un lugar existente para agregar una reseña', 'info');
+            instructions.innerHTML = '<p>Haz clic en un Punto de Interés o Servicio existente para agregar una reseña</p>';
+            setupMapClickForReview();
             break;
         case 'zona-polygon':
+            instructions.innerHTML = '<p>Haz clic en el mapa para agregar puntos al polígono. Doble clic para terminar.</p>';
             startPolygonDrawing();
             break;
         case 'zona-rectangle':
+            instructions.innerHTML = '<p>Haz clic y arrastra para dibujar un rectángulo</p>';
             startRectangleDrawing();
             break;
         case 'cancel':
@@ -636,81 +161,149 @@ function handleToolAction(action) {
     }
 }
 
-function handleMapClick(e) {
-    switch(currentAction) {
-        case 'punto-interes':
-            createPuntoInteres(e.latlng);
-            break;
-        case 'servicio':
-            createServicio(e.latlng);
-            break;
-        case 'review':
-            // Para reseñas, necesitamos verificar si hay un lugar en esa ubicación
+function setupMapClickForMarker(tipo) {
+    const clickHandler = function(e) {
+        if (currentAction && (currentAction === 'punto-interes' || currentAction === 'servicio')) {
+            if (tipo === 'punto') {
+                createPuntoInteres(e.latlng);
+            } else {
+                createServicio(e.latlng);
+            }
+        }
+    };
+    
+    map.on('click', clickHandler);
+    map._currentClickHandler = clickHandler;
+}
+
+function setupMapClickForReview() {
+    const clickHandler = function(e) {
+        if (currentAction === 'review') {
             checkForExistingLocation(e.latlng);
-            break;
-    }
+        }
+    };
+    
+    map.on('click', clickHandler);
+    map._currentClickHandler = clickHandler;
 }
 
 function startPolygonDrawing() {
-    showMessage('Haz clic en el mapa para comenzar a dibujar el polígono. Doble clic para terminar.', 'info');
+    polygonPoints = [];
     
-    const polygon = L.polygon([], {
-        color: '#3498db',
-        fillColor: '#3498db',
-        fillOpacity: 0.2,
-        weight: 2
-    }).addTo(map);
-
-    let points = [];
-
-    function onMapClick(e) {
-        points.push(e.latlng);
-        polygon.setLatLngs(points);
+    const clickHandler = function(e) {
+        polygonPoints.push(e.latlng);
         
-        if (points.length >= 3) {
-            showPolygonCreationForm(polygon, points);
-            map.off('click', onMapClick);
+        if (currentPolygon) {
+            map.removeLayer(currentPolygon);
         }
-    }
-
-    map.on('click', onMapClick);
+        
+        if (polygonPoints.length >= 2) {
+            currentPolygon = L.polygon(polygonPoints, {
+                color: '#27ae60',
+                fillColor: '#27ae60',
+                fillOpacity: 0.3,
+                weight: 2
+            }).addTo(map);
+        }
+    };
+    
+    const doubleClickHandler = function(e) {
+        if (polygonPoints.length >= 3) {
+            showPolygonCreationForm(currentPolygon, polygonPoints);
+            map.off('click', clickHandler);
+            map.off('dblclick', doubleClickHandler);
+        } else {
+            showMessage('Se necesitan al menos 3 puntos para crear un polígono', 'warning');
+        }
+    };
+    
+    map.on('click', clickHandler);
+    map.on('dblclick', doubleClickHandler);
+    
+    map._polygonClickHandler = clickHandler;
+    map._polygonDoubleClickHandler = doubleClickHandler;
 }
 
 function startRectangleDrawing() {
-    showMessage('Haz clic y arrastra para dibujar un rectángulo', 'info');
-    
-    let startLatLng;
-    let rectangle;
+    let startPoint = null;
+    let rectangle = null;
 
-    function onMouseDown(e) {
-        startLatLng = e.latlng;
-        rectangle = L.rectangle([startLatLng, startLatLng], {
-            color: '#e74c3c',
-            fillColor: '#e74c3c',
-            fillOpacity: 0.2,
+    const mouseDownHandler = function(e) {
+        startPoint = e.latlng;
+        rectangle = L.rectangle([startPoint, startPoint], {
+            color: '#e67e22',
+            fillColor: '#e67e22',
+            fillOpacity: 0.3,
             weight: 2
         }).addTo(map);
-    }
+    };
 
-    function onMouseMove(e) {
-        if (rectangle && startLatLng) {
-            const bounds = L.latLngBounds(startLatLng, e.latlng);
+    const mouseMoveHandler = function(e) {
+        if (rectangle && startPoint) {
+            const bounds = L.latLngBounds([startPoint, e.latlng]);
             rectangle.setBounds(bounds);
         }
-    }
+    };
 
-    function onMouseUp(e) {
-        if (rectangle && startLatLng) {
-            showRectangleCreationForm(rectangle);
-            map.off('mousedown', onMouseDown);
-            map.off('mousemove', onMouseMove);
-            map.off('mouseup', onMouseUp);
+    const mouseUpHandler = function(e) {
+        if (rectangle && startPoint) {
+            const bounds = rectangle.getBounds();
+            const area = (bounds.getNorth() - bounds.getSouth()) * (bounds.getEast() - bounds.getWest());
+            
+            if (Math.abs(area) < 0.0001) {
+                showMessage('El rectángulo es muy pequeño. Intenta con un área más grande.', 'warning');
+                map.removeLayer(rectangle);
+            } else {
+                showRectangleCreationForm(rectangle);
+            }
+            
+            cleanupRectangleDrawing();
         }
-    }
+    };
 
-    map.on('mousedown', onMouseDown);
-    map.on('mousemove', onMouseMove);
-    map.on('mouseup', onMouseUp);
+    map.on('mousedown', mouseDownHandler);
+    map.on('mousemove', mouseMoveHandler);
+    map.on('mouseup', mouseUpHandler);
+
+    map._rectangleMouseDown = mouseDownHandler;
+    map._rectangleMouseMove = mouseMoveHandler;
+    map._rectangleMouseUp = mouseUpHandler;
+}
+
+function cleanupDrawing() {
+    if (map._currentClickHandler) {
+        map.off('click', map._currentClickHandler);
+        map._currentClickHandler = null;
+    }
+    
+    if (map._polygonClickHandler) {
+        map.off('click', map._polygonClickHandler);
+        map.off('dblclick', map._polygonDoubleClickHandler);
+        map._polygonClickHandler = null;
+        map._polygonDoubleClickHandler = null;
+    }
+    
+    cleanupRectangleDrawing();
+    
+    if (currentPolygon) {
+        map.removeLayer(currentPolygon);
+        currentPolygon = null;
+    }
+    
+    polygonPoints = [];
+    
+    document.getElementById('drawing-instructions').innerHTML = '';
+}
+
+function cleanupRectangleDrawing() {
+    if (map._rectangleMouseDown) {
+        map.off('mousedown', map._rectangleMouseDown);
+        map.off('mousemove', map._rectangleMouseMove);
+        map.off('mouseup', map._rectangleMouseUp);
+        map._rectangleMouseDown = null;
+        map._rectangleMouseMove = null;
+        map._rectangleMouseUp = null;
+    }
 }
 
 async function createPuntoInteres(latlng) {
@@ -750,10 +343,12 @@ async function createPuntoInteres(latlng) {
             updateTable();
             showMessage('Punto de Interés creado exitosamente', 'success');
             cancelDrawing();
+        } else {
+            throw new Error('Error en la respuesta del servidor');
         }
     } catch (error) {
         console.error('Error:', error);
-        showMessage('Error al crear el Punto de Interés', 'error');
+        showMessage('Error al crear el Punto de Interés: ' + error.message, 'error');
     }
 }
 
@@ -794,10 +389,13 @@ async function createServicio(latlng) {
             updateTable();
             showMessage('Servicio creado exitosamente', 'success');
             cancelDrawing();
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error en la respuesta del servidor');
         }
     } catch (error) {
         console.error('Error:', error);
-        showMessage('Error al crear el Servicio', 'error');
+        showMessage('Error al crear el Servicio: ' + error.message, 'error');
     }
 }
 
@@ -919,24 +517,37 @@ async function saveZona(zonaData, layer) {
             updateTable();
             showMessage('Zona creada exitosamente', 'success');
             cancelDrawing();
+        } else {
+            throw new Error('Error en la respuesta del servidor');
         }
     } catch (error) {
         console.error('Error:', error);
-        showMessage('Error al crear la zona', 'error');
+        showMessage('Error al crear la zona: ' + error.message, 'error');
     }
 }
 
 function checkForExistingLocation(latlng) {
-    // Buscar si hay algún marcador en esa ubicación
     let foundLocation = null;
     let foundType = null;
 
-    markersLayer.eachLayer(function(layer) {
-        if (layer instanceof L.Marker) {
-            const distance = layer.getLatLng().distanceTo(latlng);
-            if (distance < 50) { // 50 metros de tolerancia
-                foundLocation = layer;
-                foundType = layer._icon.innerHTML.includes('landmark') ? 'punto' : 'servicio';
+    puntosInteres.forEach(punto => {
+        if (punto.location && punto.location.coordinates) {
+            const puntoLatLng = L.latLng(punto.location.coordinates[1], punto.location.coordinates[0]);
+            const distance = puntoLatLng.distanceTo(latlng);
+            if (distance < 100) {
+                foundLocation = punto;
+                foundType = 'punto';
+            }
+        }
+    });
+
+    servicios.forEach(servicio => {
+        if (servicio.location && servicio.location.coordinates) {
+            const servicioLatLng = L.latLng(servicio.location.coordinates[1], servicio.location.coordinates[0]);
+            const distance = servicioLatLng.distanceTo(latlng);
+            if (distance < 100) {
+                foundLocation = servicio;
+                foundType = 'servicio';
             }
         }
     });
@@ -944,16 +555,21 @@ function checkForExistingLocation(latlng) {
     if (foundLocation) {
         createReview(foundLocation._id, foundType);
     } else {
-        showMessage('No se encontró un lugar en esta ubicación. Primero crea un Punto de Interés o Servicio.', 'warning');
+        showMessage('No se encontró un Punto de Interés o Servicio en esta ubicación. Primero crea un lugar.', 'warning');
     }
 }
 
 async function createReview(locationId, locationType) {
-    const calificacion = prompt('Calificación (1-5):');
-    if (!calificacion || calificacion < 1 || calificacion > 5) {
-        showMessage('La calificación debe ser entre 1 y 5', 'error');
-        return;
-    }
+    let calificacion;
+    
+    do {
+        calificacion = prompt('Calificación (1-5 estrellas):');
+        if (calificacion === null) {
+            cancelDrawing();
+            return;
+        }
+        calificacion = parseInt(calificacion);
+    } while (isNaN(calificacion) || calificacion < 1 || calificacion > 5);
 
     const opinion = prompt('Tu opinión:');
     if (!opinion) {
@@ -963,7 +579,7 @@ async function createReview(locationId, locationType) {
 
     const reviewData = {
         user: currentUser._id,
-        calificacion: parseInt(calificacion),
+        calificacion: calificacion,
         opinion: opinion,
         servicioTuristico: locationId
     };
@@ -980,18 +596,27 @@ async function createReview(locationId, locationType) {
         if (response.ok) {
             showMessage('Reseña agregada exitosamente', 'success');
             cancelDrawing();
+            
+            setTimeout(() => {
+                localStorage.setItem('currentPlaceId', locationId);
+                localStorage.setItem('currentPlaceType', locationType);
+                window.location.href = '/resenas';
+            }, 1000);
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al crear la reseña');
         }
     } catch (error) {
         console.error('Error:', error);
-        showMessage('Error al crear la reseña', 'error');
+        showMessage('Error al crear la reseña: ' + error.message, 'error');
     }
 }
 
 function cancelDrawing() {
+    cleanupDrawing();
     currentAction = null;
     drawingMode = false;
     
-    // Remover clases activas de todos los botones
     document.querySelectorAll('.tool-btn').forEach(btn => {
         btn.classList.remove('active');
     });
@@ -999,9 +624,249 @@ function cancelDrawing() {
     showMessage('Modo de creación cancelado', 'info');
 }
 
+async function loadData() {
+    try {
+        const [pinteresResponse, serviciosResponse, zonasResponse] = await Promise.all([
+            fetch(API_BASE + '/pinteres'),
+            fetch(API_BASE + '/servicio'),
+            fetch(API_BASE + '/zona')
+        ]);
 
+        puntosInteres = await pinteresResponse.json();
+        servicios = await serviciosResponse.json();
+        zonas = await zonasResponse.json();
 
+        addMarkersToMap();
+        addZonasToMap();
+        updateTable();
+    } catch (error) {
+        console.error('Error cargando datos:', error);
+    }
+}
+
+function addMarkersToMap() {
+    markersLayer.clearLayers();
+
+    puntosInteres.forEach(punto => {
+        if (punto.location && punto.location.coordinates) {
+            const marker = L.marker([
+                punto.location.coordinates[1], 
+                punto.location.coordinates[0]
+            ], { icon: iconPuntoInteres }).addTo(markersLayer);
+            
+            marker._id = punto._id;
+            marker.bindPopup(createPopupContent(punto, 'punto'));
+        }
+    });
+
+    servicios.forEach(servicio => {
+        if (servicio.location && servicio.location.coordinates) {
+            const marker = L.marker([
+                servicio.location.coordinates[1], 
+                servicio.location.coordinates[0]
+            ], { icon: iconServicio }).addTo(markersLayer);
+            
+            marker._id = servicio._id;
+            marker.bindPopup(createPopupContent(servicio, 'servicio'));
+        }
+    });
+}
+
+function addZonasToMap() {
+    zonasLayer.clearLayers();
+
+    zonas.forEach(zona => {
+        let layer;
+        
+        switch(zona.tipo) {
+            case 'polygon':
+                if (zona.coordenadas && zona.coordenadas[0]) {
+                    const coordinates = zona.coordenadas[0].map(coord => [coord.lat, coord.lng]);
+                    layer = L.polygon(coordinates, { 
+                        color: '#3498db', 
+                        fillOpacity: 0.2,
+                        weight: 2
+                    });
+                }
+                break;
+            case 'rectangle':
+                if (zona.bounds) {
+                    layer = L.rectangle([
+                        [zona.bounds.norte, zona.bounds.oeste],
+                        [zona.bounds.sur, zona.bounds.este]
+                    ], { 
+                        color: '#e74c3c', 
+                        fillOpacity: 0.2,
+                        weight: 2
+                    });
+                }
+                break;
+        }
+        
+        if (layer) {
+            layer._id = zona._id;
+            layer.bindPopup(createZonaPopupContent(zona));
+            zonasLayer.addLayer(layer);
+        }
+    });
+}
+
+function createPopupContent(item, tipo) {
+    return `
+        <div class="popup-content">
+            <h4>${item.nombre}</h4>
+            <p>${item.descripcion}</p>
+            <div class="popup-actions">
+                <button onclick="editLocation('${item._id}', '${tipo}')" class="btn btn-warning btn-sm">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
+                <button onclick="deleteLocation('${item._id}', '${tipo}')" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+                <button onclick="verResenas('${item._id}', '${tipo}')" class="btn btn-primary btn-sm">
+                    <i class="fas fa-star"></i> Reseñas
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function createZonaPopupContent(zona) {
+    return `
+        <div class="popup-content">
+            <h4>${zona.nombre}</h4>
+            <p>${zona.descripcion}</p>
+            <p><strong>Tipo:</strong> ${zona.tipo}</p>
+            <div class="popup-actions">
+                <button onclick="deleteZona('${zona._id}')" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function updateTable() {
+    const tableBody = document.getElementById('locationsTable');
+    tableBody.innerHTML = '';
+
+    const allItems = [
+        ...puntosInteres.map(p => ({...p, tipo: 'Punto de Interés'})),
+        ...servicios.map(s => ({...s, tipo: 'Servicio'})),
+        ...zonas.map(z => ({...z, tipo: 'Zona'}))
+    ];
+
+    allItems.forEach(item => {
+        const row = document.createElement('tr');
+        
+        let locationInfo = '';
+        if (item.location) {
+            const coords = item.location.coordinates;
+            locationInfo = `Lat: ${coords[1].toFixed(4)}, Lng: ${coords[0].toFixed(4)}`;
+        } else if (item.centro) {
+            locationInfo = `Lat: ${item.centro.lat.toFixed(4)}, Lng: ${item.centro.lng.toFixed(4)}`;
+        }
+
+        row.innerHTML = `
+            <td>${item.nombre}</td>
+            <td>${item.descripcion}</td>
+            <td>${item.tipo}</td>
+            <td>${locationInfo}</td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+function filterTable(searchTerm) {
+    const rows = document.querySelectorAll('#locationsTable tr');
+    rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchTerm.toLowerCase()) ? '' : 'none';
+    });
+}
+
+function showMessage(text, type) {
+    const messageDiv = document.getElementById('message');
+    messageDiv.textContent = text;
+    messageDiv.className = `message ${type}`;
+    messageDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        messageDiv.style.display = 'none';
+    }, 3000);
+}
+
+// Funciones globales
 window.cancelZonaCreation = function() {
     map.closePopup();
     cancelDrawing();
+};
+
+window.editLocation = async function(id, tipo) {
+    const nombre = prompt('Nuevo nombre:');
+    if (nombre === null) return;
+    
+    const descripcion = prompt('Nueva descripción:');
+    if (descripcion === null) return;
+    
+    if (nombre && descripcion) {
+        try {
+            const endpoint = tipo === 'punto' ? '/pinteres' : '/servicio';
+            const response = await fetch(API_BASE + endpoint + '/' + id, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ nombre, descripcion })
+            });
+
+            if (response.ok) {
+                loadData();
+                showMessage('Ubicación actualizada exitosamente', 'success');
+            }
+        } catch (error) {
+            showMessage('Error al actualizar la ubicación', 'error');
+        }
+    }
+};
+
+window.deleteLocation = async function(id, tipo) {
+    if (confirm('¿Estás seguro de eliminar esta ubicación?')) {
+        try {
+            const endpoint = tipo === 'punto' ? '/pinteres' : '/servicio';
+            const response = await fetch(API_BASE + endpoint + '/' + id, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                loadData();
+                showMessage('Ubicación eliminada exitosamente', 'success');
+            }
+        } catch (error) {
+            showMessage('Error al eliminar la ubicación', 'error');
+        }
+    }
+};
+
+window.deleteZona = async function(id) {
+    if (confirm('¿Estás seguro de eliminar esta zona?')) {
+        try {
+            const response = await fetch(API_BASE + '/zona/' + id, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                loadData();
+                showMessage('Zona eliminada exitosamente', 'success');
+            }
+        } catch (error) {
+            showMessage('Error al eliminar la zona', 'error');
+        }
+    }
+};
+
+window.verResenas = function(id, tipo) {
+    localStorage.setItem('currentPlaceId', id);
+    localStorage.setItem('currentPlaceType', tipo);
+    window.location.href = '/reviews.html';
 };
