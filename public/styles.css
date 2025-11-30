@@ -407,6 +407,12 @@ body {
     color: #ffc107;
 }
 
+.review-username {
+    text-align: start;
+    align-content: flex-start;
+    font-size: 1em;
+}
+
 .review-date {
     color: #666;
     font-size: 0.9em;

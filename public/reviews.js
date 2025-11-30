@@ -46,10 +46,18 @@ async function initializePage() {
     }
 }
 
+
+async function getUserName(id) {
+    const responseUserName = await fetch(`${API_BASE}/user/${id}`);
+    const user = await responseUserName.json();
+    return user.username
+}
+
 async function loadReviews() {
     try {
         const response = await fetch(`${API_BASE}/review`);
         const allReviews = await response.json();
+
         
         // Filtrar reseñas para este lugar específico
         reviews = allReviews.filter(review => 
@@ -63,19 +71,28 @@ async function loadReviews() {
     }
 }
 
-function displayReviews() {
+async function displayReviews() {
     const reviewsList = document.getElementById('reviewsList');
     
     if (reviews.length === 0) {
         reviewsList.innerHTML = '<p>No hay reseñas todavía. ¡Sé el primero en opinar!</p>';
         return;
-    }
+    } else {
 
-    reviewsList.innerHTML = reviews.map(review => `
+
+        // Esperar nombres de usuario
+        const usernames = await Promise.all(
+            reviews.map(r => getUserName(r.user))
+        );
+            
+        reviewsList.innerHTML = reviews.map( (review, i) => `
         <div class="review-item">
             <div class="review-header">
                 <div class="review-stars">
                     ${'★'.repeat(review.calificacion)}${'☆'.repeat(5 - review.calificacion)}
+                </div>
+                <div class="review-username">
+                    ${usernames[i]}
                 </div>
                 <div class="review-date">
                     ${new Date(review.createdAt || Date.now()).toLocaleDateString()}
@@ -86,6 +103,8 @@ function displayReviews() {
             </div>
         </div>
     `).join('');
+    }
+    
 }
 
 function updateStats() {

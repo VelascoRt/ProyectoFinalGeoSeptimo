@@ -339,9 +339,9 @@ async function createPuntoInteres(latlng) {
 
         if (response.ok) {
             const newPunto = await response.json();
-            addMarkerToMap(newPunto, 'punto');
-            updateTable();
-            showMessage('Punto de Interés creado exitosamente', 'success');
+            addMarkersToMap(newPunto, 'punto');
+            loadData();
+            showMessage('Punto de Interés creado exitosamente', 'success'); // NW
             cancelDrawing();
         } else {
             throw new Error('Error en la respuesta del servidor');
@@ -385,9 +385,9 @@ async function createServicio(latlng) {
 
         if (response.ok) {
             const newServicio = await response.json();
-            addMarkerToMap(newServicio, 'servicio');
-            updateTable();
-            showMessage('Servicio creado exitosamente', 'success');
+            showMessage('Servicio creado exitosamente', 'success'); // NW
+            addMarkersToMap(newServicio, 'servicio');
+            loadData();
             cancelDrawing();
         } else {
             const errorData = await response.json();
