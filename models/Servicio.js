@@ -1,10 +1,6 @@
 const mongoose = require('mongoose');
 
 const ServicioSchema = new mongoose.Schema({
-    id: {
-        type: Number,
-        unique: true
-    },
     nombre: {
         type: String,
         required: true
