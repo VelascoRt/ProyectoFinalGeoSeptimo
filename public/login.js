@@ -30,21 +30,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const password = document.getElementById('password').value;
 
         try {
-            // Buscar usuario existente
-            const response = await fetch(`${API_BASE}/user`);
-            const users = await response.json();
-            
-            const user = users.find(u => u.username === username && u.password === password);
-            
-            if (user) {
-                localStorage.setItem('currentUser', JSON.stringify(user));
-                showMessage('Login exitoso! Redirigiendo...', 'success');
-                setTimeout(() => {
-                    window.location.href = 'mapa.html';
-                }, 1000);
-            } else {
-                showMessage('Usuario o contraseña incorrectos', 'error');
+            const response = await fetch(`${API_BASE}/user/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                showMessage(data.message, 'error');
+                return;
             }
+
+            localStorage.setItem('currentUser', JSON.stringify(data.data));
+            console.log(data.data);
+            showMessage('Login exitoso! Redirigiendo...', 'success');
+            setTimeout(() => window.location.href = 'mapa.html', 1000);
+
         } catch (error) {
             showMessage('Error al conectar con el servidor', 'error');
         }
@@ -55,12 +58,6 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const username = document.getElementById('newUsername').value;
         const password = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-
-        if (password !== confirmPassword) {
-            showMessage('Las contraseñas no coinciden', 'error');
-            return;
-        }
 
         try {
             // Verificar si el usuario ya existe
@@ -106,8 +103,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Verificar si ya hay un usuario logueado
-    const currentUser = localStorage.getItem('currentUser');
+    /*const currentUser = localStorage.getItem('currentUser');
     if (currentUser) {
         window.location.href = 'mapa.html';
-    }
+    }*/
 });
