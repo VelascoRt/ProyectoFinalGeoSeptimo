@@ -28,6 +28,7 @@ const iconPuntoInteres = createCustomIcon('#e74c3c', 'fa-landmark');
 const iconServicio = createCustomIcon('#3498db', 'fa-concierge-bell');
 
 document.addEventListener('DOMContentLoaded', function() {
+    console.log(localStorage.getItem('currentUser'));
     currentUser = JSON.parse(localStorage.getItem('currentUser'));
     if (!currentUser) {
         window.location.href = '/';
