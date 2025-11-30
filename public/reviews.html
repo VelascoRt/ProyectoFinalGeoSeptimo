@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reseñas - Turismo App</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="reviews-container">
+        <header class="reviews-header">
+            <button id="btnVolverMapa" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver al Mapa
+            </button>
+            <h1 id="lugarTitulo"><i class="fas fa-star"></i> Reseñas</h1>
+        </header>
+
+        <div class="reviews-content">
+            <div class="lugar-info" id="lugarInfo">
+                <!-- Información del lugar cargada dinámicamente -->
+            </div>
+
+            <div class="reviews-stats">
+                <div class="rating-average">
+                    <span id="ratingValue">0.0</span>
+                    <div class="stars" id="averageStars"></div>
+                    <span id="totalReviews">0 reseñas</span>
+                </div>
+            </div>
+
+            <div class="add-review">
+                <h3>Agregar Reseña</h3>
+                <form id="reviewForm">
+                    <div class="form-group">
+                        <label>Calificación:</label>
+                        <div class="star-rating">
+                            <span class="star" data-rating="1">★</span>
+                            <span class="star" data-rating="2">★</span>
+                            <span class="star" data-rating="3">★</span>
+                            <span class="star" data-rating="4">★</span>
+                            <span class="star" data-rating="5">★</span>
+                        </div>
+                        <input type="hidden" id="calificacion" name="calificacion" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="opinion">Opinión:</label>
+                        <textarea id="opinion" name="opinion" maxlength="1000" required></textarea>
+                        <small><span id="charCount">0</span>/1000 caracteres</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Enviar Reseña</button>
+                </form>
+            </div>
+
+            <div class="reviews-list" id="reviewsList">
+                <!-- Lista de reseñas cargada dinámicamente -->
+            </div>
+        </div>
+    </div>
+
+    <script src="reviews.js"></script>
+</body>
+</html>

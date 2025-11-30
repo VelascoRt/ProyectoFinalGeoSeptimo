@@ -8,6 +8,15 @@ const routerApi = require('./routes/rutas');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const { logError, errorHandler,  notFoundHandler, asyncErrorHandler } = require('./middlewares/errorHandler');
+
+// Configurar CORS correctamente
+app.use(cors({
+    origin: ['http://127.0.0.1:5500', 'http://localhost:5500', 'http://localhost:3000'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -19,8 +28,11 @@ app.get("/", (req,res) => {
 
 // Routers
 routerApi(app);
+app.use(notFoundHandler);
+app.use(logError);       
+app.use(errorHandler); 
+
 // MongoDB
-app.use(cors());
 app.use(bodyParser.json());
 
 // VICTOR
