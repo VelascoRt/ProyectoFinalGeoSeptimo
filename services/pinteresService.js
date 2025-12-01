@@ -17,7 +17,7 @@ class PIntereservice {
             const data = await PInteres.findById({_id : id});
             return data;
         } catch (e) { // Middleware
-            return null;
+            throw new Error("PInteres not found");
         }
     }
 

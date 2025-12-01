@@ -17,7 +17,7 @@ class ReviewService {
             const data = await Review.findById({_id : id});
             return data;
         } catch (e) { // Middleware
-            return null;
+            throw new Error("Review not found");
         }
     }
 

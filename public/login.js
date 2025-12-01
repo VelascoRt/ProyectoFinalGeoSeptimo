@@ -103,8 +103,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Verificar si ya hay un usuario logueado
-    /*const currentUser = localStorage.getItem('currentUser');
+    const currentUser = localStorage.getItem('currentUser');
     if (currentUser) {
         window.location.href = 'mapa.html';
-    }*/
+    }
 });

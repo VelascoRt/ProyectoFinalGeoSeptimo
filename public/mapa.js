@@ -28,7 +28,6 @@ const iconPuntoInteres = createCustomIcon('#e74c3c', 'fa-landmark');
 const iconServicio = createCustomIcon('#3498db', 'fa-concierge-bell');
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log(localStorage.getItem('currentUser'));
     currentUser = JSON.parse(localStorage.getItem('currentUser'));
     if (!currentUser) {
         window.location.href = '/';
@@ -188,46 +187,52 @@ function setupMapClickForReview() {
     map._currentClickHandler = clickHandler;
 }
 
+// El anterior doble click no funcionaba casi nunca.
 function startPolygonDrawing() {
     polygonPoints = [];
-    
-    const clickHandler = function(e) {
+    currentPolygon = null;
+
+    document.getElementById("finishPolygonBtn").style.display = "block";
+
+    map._clickHandler = e => {
         polygonPoints.push(e.latlng);
-        
-        if (currentPolygon) {
-            map.removeLayer(currentPolygon);
-        }
-        
-        if (polygonPoints.length >= 2) {
+
+        if (currentPolygon) map.removeLayer(currentPolygon);
+
+        if (polygonPoints.length >= 2 && document.getElementById("finishPolygonBtn").style.display === "block") {
             currentPolygon = L.polygon(polygonPoints, {
-                color: '#27ae60',
-                fillColor: '#27ae60',
+                color: "#27ae60",
+                fillColor: "#27ae60",
                 fillOpacity: 0.3,
                 weight: 2
             }).addTo(map);
         }
     };
-    
-    const doubleClickHandler = function(e) {
-        if (polygonPoints.length >= 3) {
-            showPolygonCreationForm(currentPolygon, polygonPoints);
-            map.off('click', clickHandler);
-            map.off('dblclick', doubleClickHandler);
-        } else {
-            showMessage('Se necesitan al menos 3 puntos para crear un polígono', 'warning');
-        }
-    };
-    
-    map.on('click', clickHandler);
-    map.on('dblclick', doubleClickHandler);
-    
-    map._polygonClickHandler = clickHandler;
-    map._polygonDoubleClickHandler = doubleClickHandler;
+
+    map.on("click", map._clickHandler);
+
+    document.getElementById("finishPolygonBtn").onclick = finishPolygonDrawing;
 }
+
+function finishPolygonDrawing() {
+    if (polygonPoints.length < 3) {
+        showMessage("Necesitas al menos 3 puntos", "warning");
+        return;
+    }
+
+    map.off("click", map._clickHandler);
+
+    document.getElementById("finishPolygonBtn").style.display = "none";
+
+    showPolygonCreationForm(currentPolygon, polygonPoints);
+}
+
+
 
 function startRectangleDrawing() {
     let startPoint = null;
     let rectangle = null;
+    map.dragging.disable();
 
     const mouseDownHandler = function(e) {
         startPoint = e.latlng;
@@ -237,12 +242,15 @@ function startRectangleDrawing() {
             fillOpacity: 0.3,
             weight: 2
         }).addTo(map);
+        
     };
 
     const mouseMoveHandler = function(e) {
+        
         if (rectangle && startPoint) {
             const bounds = L.latLngBounds([startPoint, e.latlng]);
             rectangle.setBounds(bounds);
+            
         }
     };
 
@@ -251,14 +259,16 @@ function startRectangleDrawing() {
             const bounds = rectangle.getBounds();
             const area = (bounds.getNorth() - bounds.getSouth()) * (bounds.getEast() - bounds.getWest());
             
-            if (Math.abs(area) < 0.0001) {
+            if (Math.abs(area) < 0.000001) {
                 showMessage('El rectángulo es muy pequeño. Intenta con un área más grande.', 'warning');
                 map.removeLayer(rectangle);
             } else {
                 showRectangleCreationForm(rectangle);
+                console.log("sip")
             }
-            
+            map.dragging.enable();
             cleanupRectangleDrawing();
+            map.removeLayer(rectangle);
         }
     };
 
@@ -473,6 +483,8 @@ function showRectangleCreationForm(rectangle) {
         .setContent(form)
         .openOn(map);
 
+    console.log("sip1")
+
     document.getElementById('rectangleForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const nombre = document.getElementById('zonaNombre').value;
@@ -488,12 +500,10 @@ function showRectangleCreationForm(rectangle) {
                 sur: bounds.getSouth(),
                 este: bounds.getEast(),
                 oeste: bounds.getWest()
-            },
-            centro: {
-                lat: bounds.getCenter().lat,
-                lng: bounds.getCenter().lng
             }
         };
+
+        console.log("sip2")
 
         await saveZona(zonaData, rectangle);
         map.closePopup(popup);
@@ -513,9 +523,9 @@ async function saveZona(zonaData, layer) {
         if (response.ok) {
             const newZona = await response.json();
             layer._id = newZona._id;
-            layer.bindPopup(createZonaPopupContent(newZona));
+            layer.bindPopup(createZonaPopupContent(newZona,));
             zonasLayer.addLayer(layer);
-            updateTable();
+            loadData();
             showMessage('Zona creada exitosamente', 'success');
             cancelDrawing();
         } else {
@@ -615,14 +625,14 @@ async function createReview(locationId, locationType) {
 
 function cancelDrawing() {
     cleanupDrawing();
+    document.getElementById("finishPolygonBtn").style.display = "none";
     currentAction = null;
     drawingMode = false;
+    map.dragging.enable();
     
     document.querySelectorAll('.tool-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    
-    showMessage('Modo de creación cancelado', 'info');
 }
 
 async function loadData() {
@@ -724,6 +734,9 @@ function createPopupContent(item, tipo) {
                 <button onclick="deleteLocation('${item._id}', '${tipo}')" class="btn btn-danger btn-sm">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>
+                <button onclick="moveLocation('${item._id}', '${tipo}')" class="btn btn-success btn-sm">
+                    <i class="fas fa-arrows"></i> Mover
+                </button>
                 <button onclick="verResenas('${item._id}', '${tipo}')" class="btn btn-primary btn-sm">
                     <i class="fas fa-star"></i> Reseñas
                 </button>
@@ -739,6 +752,9 @@ function createZonaPopupContent(zona) {
             <p>${zona.descripcion}</p>
             <p><strong>Tipo:</strong> ${zona.tipo}</p>
             <div class="popup-actions">
+                <button onclick="editZona('${zona._id}')" class="btn btn-warning btn-sm">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
                 <button onclick="deleteZona('${zona._id}')" class="btn btn-danger btn-sm">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>
@@ -814,6 +830,90 @@ window.editLocation = async function(id, tipo) {
         try {
             const endpoint = tipo === 'punto' ? '/pinteres' : '/servicio';
             const response = await fetch(API_BASE + endpoint + '/' + id, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ nombre, descripcion })
+            });
+
+            if (response.ok) {
+                loadData();
+                showMessage('Ubicación actualizada exitosamente', 'success');
+            }
+        } catch (error) {
+            showMessage('Error al actualizar la ubicación', 'error');
+        }
+    }
+};
+
+// Moving
+let moveHandler = null;
+
+window.moveLocation = function(id, tipo) {
+    map.closePopup();
+
+    showMessage("Da click en un nuevo punto del mapa para mover la ubicación...", "info");
+
+    // Por si acaso
+    if (moveHandler) {
+        map.off("click", moveHandler);
+        moveHandler = null;
+    }
+
+
+    moveHandler = async function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        console.log(lng);
+        console.log(lat);
+
+
+        map.off("click", moveHandler);
+        moveHandler = null;
+
+        try {
+            const endpoint = tipo === "punto" ? "/pinteres" : "/servicio";
+
+            const response = await fetch(API_BASE + endpoint + "/" + id, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ 
+                    location : {
+                    type : "Point",
+                    coordinates: [lng, lat]
+                }})
+            });
+
+            console.log(response);
+
+            if (response.ok) {
+                loadData();
+                showMessage("Ubicación actualizada exitosamente", "success");
+            } else {
+                showMessage("Error al actualizar la ubicación", "error");
+            }
+        } catch (error) {
+            showMessage("Error al actualizar la ubicación", "error");
+        }
+    };
+
+    // Activar escucha del clic
+    map.on("click", moveHandler);
+};
+
+window.editZona = async function(id) {
+    const nombre = prompt('Nuevo nombre:');
+    if (nombre === null) return;
+    
+    const descripcion = prompt('Nueva descripción:');
+    if (descripcion === null) return;
+    
+    if (nombre && descripcion) {
+        try {
+            const response = await fetch(API_BASE + '/zona/' + id, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
