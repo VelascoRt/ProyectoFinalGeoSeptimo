@@ -17,7 +17,7 @@ class UserService {
             const data = await User.findById({_id : id});
             return data;
         } catch (e) { // Middleware
-            return null;
+            throw new Error("Usuario not found");
         }
     }
 

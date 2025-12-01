@@ -17,7 +17,7 @@ class ZonaService {
             const data = await Zona.findById({_id : id});
             return data;
         } catch (e) { // Middleware
-            return null;
+            throw new Error("Zona not found");
         }
     }
 

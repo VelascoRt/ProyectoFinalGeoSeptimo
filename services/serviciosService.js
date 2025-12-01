@@ -16,7 +16,7 @@ class servicioService {
             const data = await Servicio.findById({_id : id});
             return data;
         } catch (e) { // Middleware
-            return null;
+            throw new Error("Servicio not found");
         }
     }
 
