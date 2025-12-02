@@ -43,17 +43,19 @@ Una cuenta activa en MongoDB Atlas para obtener tu cadena de conexión.
 Sigue estos pasos para ejecutar el proyecto en tu entorno local:
 
 ### 1. Clonar el repositorio
+``` bash
+git clone [https://github.com/TU_USUARIO/ProyectoFinalGeoSeptimo.git](https://github.com/TU_USUARIO/ProyectoFinalGeoSeptimo.git)```
 
-git clone [https://github.com/TU_USUARIO/ProyectoFinalGeoSeptimo.git](https://github.com/TU_USUARIO/ProyectoFinalGeoSeptimo.git)
-cd ProyectoFinalGeoSeptimo
+```bash
+cd ProyectoFinalGeoSeptimo ```
 
 
 
 ### 2. Instalar dependencias
 
 Dado que el frontend y el backend comparten el package.json en la raíz, solo necesitas ejecutar:
-
-npm install
+``` bash
+npm install ```
 
 
 
@@ -72,8 +74,8 @@ El proyecto está configurado para ejecutar tanto el servidor (Express) como el 
 Opción A: Modo Desarrollo (Recomendado)
 
 Inicia ambos servidores (Backend en puerto 3001 y Frontend en puerto 3000) con un solo comando:
-
-npm run dev
+``` bash
+npm run dev```
 
 
 
@@ -82,15 +84,15 @@ Opción B: Ejecución Individual
 Si prefieres correrlos en terminales separadas para depuración:
 
 Terminal 1 (Backend - API):
-
-npm run api
+``` bash
+npm run api```
 # Deberías ver: "My server is running on port: 3001" y "Conexion a MongoDB exitosa"
 
 
 
 Terminal 2 (Frontend - React):
-
-npm start
+``` bash 
+npm start```
 # Abrirá http://localhost:3000 en tu navegador
 
 
@@ -145,8 +147,8 @@ PROYECTOFINALGEOSEPTIMO/
 ### Antes de iniciar
 
 Primero corre el comando:
-
-npm i
+``` bash
+npm i ```
 
 ### Después crea el archivo .env y agrega la variable de MONGODB:
 
@@ -154,20 +156,20 @@ MONGODB=TUCONNECT
 
 Y solamente corre npm run api o npm start para correr la API o el frontend.
 o
-
-npm run dev
+``` bash 
+npm run dev```
 
 ### Para correr ambas.
 
 Scripts Disponibles
 
 ### In the project directory, you can run:
-
-npm run api
+``` bash 
+npm run api```
 
 ### Para correr la API.
-
-npm start
+``` bash 
+npm start```
 
 ### Runs the app in the development mode.
 
@@ -176,14 +178,14 @@ Open http://localhost:3000 to view it in your browser.
 The page will reload when you make changes.
 
 You may also see any lint errors in the console.
-
-npm test
+``` bash
+npm test```
 
 Launches the test runner in the interactive watch mode.
 
 See the section about running tests for more information.
-
-npm run build
+``` bash 
+npm run build```
 
 Builds the app for production to the build folder.
 
@@ -194,8 +196,8 @@ The build is minified and the filenames include the hashes.
 Your app is ready to be deployed!
 
 See the section about deployment for more information.
-
-npm run eject
+``` bash
+npm run eject```
 
 Modelos
 
