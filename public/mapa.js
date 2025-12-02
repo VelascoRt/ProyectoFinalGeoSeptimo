@@ -10,6 +10,10 @@ let currentAction = null;
 let markersLayer = L.layerGroup();
 let zonasLayer = L.layerGroup();
 
+// Variables para búsqueda
+let currentHighlight = null;
+let currentHighlightLayer = null;
+
 // Variables para el dibujo de polígonos
 let polygonPoints = [];
 let currentPolygon = null;
@@ -73,9 +77,6 @@ function addDrawingTools() {
                     <button class="btn btn-warning tool-btn" data-action="zona-rectangle">
                         <i class="fas fa-vector-square"></i> Zona Rectángulo
                     </button>
-                    <button class="btn btn-info tool-btn" data-action="review">
-                        <i class="fas fa-star"></i> Agregar Reseña
-                    </button>
                     <button class="btn btn-secondary tool-btn" data-action="cancel">
                         <i class="fas fa-times"></i> Cancelar
                     </button>
@@ -98,6 +99,19 @@ function setupEventListeners() {
         }
     });
 
+    // Evento para búsqueda por botón
+    document.getElementById('btnBuscar').addEventListener('click', function() {
+        performSearch();
+    });
+
+    // Evento para búsqueda por Enter
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+
+    // Evento para búsqueda en tiempo real en tabla
     document.getElementById('searchInput').addEventListener('input', function(e) {
         filterTable(e.target.value);
     });
@@ -143,10 +157,6 @@ function handleToolAction(action, button) {
             instructions.innerHTML = '<p>Haz clic en el mapa para colocar un Servicio</p>';
             setupMapClickForMarker('servicio');
             break;
-        case 'review':
-            instructions.innerHTML = '<p>Haz clic en un Punto de Interés o Servicio existente para agregar una reseña</p>';
-            setupMapClickForReview();
-            break;
         case 'zona-polygon':
             instructions.innerHTML = '<p>Haz clic en el mapa para agregar puntos al polígono. Doble clic para terminar.</p>';
             startPolygonDrawing();
@@ -176,27 +186,29 @@ function setupMapClickForMarker(tipo) {
     map._currentClickHandler = clickHandler;
 }
 
-function setupMapClickForReview() {
-    const clickHandler = function(e) {
-        if (currentAction === 'review') {
-            checkForExistingLocation(e.latlng);
-        }
-    };
-    
-    map.on('click', clickHandler);
-    map._currentClickHandler = clickHandler;
-}
-
+// El anterior doble click no funcionaba casi nunca.
 function startPolygonDrawing() {
     polygonPoints = [];
+    currentPolygon = null;
     
-    const clickHandler = function(e) {
+    // Mostrar el botón
+    document.getElementById("finishPolygonBtn").style.display = "block";
+    
+    // Limpiar cualquier handler anterior
+    if (map._polygonClickHandler) {
+        map.off("click", map._polygonClickHandler);
+    }
+    
+    // Handler para agregar puntos
+    map._polygonClickHandler = e => {
         polygonPoints.push(e.latlng);
         
+        // Actualizar o crear el polígono visual
         if (currentPolygon) {
             map.removeLayer(currentPolygon);
         }
         
+        // Solo dibujar si hay al menos 2 puntos
         if (polygonPoints.length >= 2) {
             currentPolygon = L.polygon(polygonPoints, {
                 color: '#27ae60',
@@ -207,21 +219,32 @@ function startPolygonDrawing() {
         }
     };
     
-    const doubleClickHandler = function(e) {
-        if (polygonPoints.length >= 3) {
-            showPolygonCreationForm(currentPolygon, polygonPoints);
-            map.off('click', clickHandler);
-            map.off('dblclick', doubleClickHandler);
-        } else {
-            showMessage('Se necesitan al menos 3 puntos para crear un polígono', 'warning');
-        }
-    };
+    map.on("click", map._polygonClickHandler);
     
-    map.on('click', clickHandler);
-    map.on('dblclick', doubleClickHandler);
+    // Configurar el botón para finalizar
+    document.getElementById("finishPolygonBtn").onclick = finishPolygonDrawing;
     
-    map._polygonClickHandler = clickHandler;
-    map._polygonDoubleClickHandler = doubleClickHandler;
+    // Instrucciones
+    showMessage('Haz clic en el mapa para agregar puntos al polígono. Luego presiona "Finalizar Polígono"', 'info');
+}
+
+function finishPolygonDrawing() {
+    if (polygonPoints.length < 3) {
+        showMessage("Necesitas al menos 3 puntos para crear un polígono", "warning");
+        return;
+    }
+    
+    // Remover el handler de clics
+    map.off("click", map._polygonClickHandler);
+    map._polygonClickHandler = null;
+    
+    // Ocultar el botón
+    document.getElementById("finishPolygonBtn").style.display = "none";
+    
+    // Mostrar el formulario para crear la zona
+    if (currentPolygon) {
+        showPolygonCreationForm(currentPolygon, polygonPoints);
+    }
 }
 
 function startRectangleDrawing() {
@@ -339,8 +362,8 @@ async function createPuntoInteres(latlng) {
 
         if (response.ok) {
             const newPunto = await response.json();
-            addMarkerToMap(newPunto, 'punto');
-            updateTable();
+            addMarkersToMap();
+            loadData();
             showMessage('Punto de Interés creado exitosamente', 'success');
             cancelDrawing();
         } else {
@@ -385,9 +408,9 @@ async function createServicio(latlng) {
 
         if (response.ok) {
             const newServicio = await response.json();
-            addMarkerToMap(newServicio, 'servicio');
-            updateTable();
             showMessage('Servicio creado exitosamente', 'success');
+            addMarkersToMap();
+            loadData();
             cancelDrawing();
         } else {
             const errorData = await response.json();
@@ -523,92 +546,6 @@ async function saveZona(zonaData, layer) {
     } catch (error) {
         console.error('Error:', error);
         showMessage('Error al crear la zona: ' + error.message, 'error');
-    }
-}
-
-function checkForExistingLocation(latlng) {
-    let foundLocation = null;
-    let foundType = null;
-
-    puntosInteres.forEach(punto => {
-        if (punto.location && punto.location.coordinates) {
-            const puntoLatLng = L.latLng(punto.location.coordinates[1], punto.location.coordinates[0]);
-            const distance = puntoLatLng.distanceTo(latlng);
-            if (distance < 100) {
-                foundLocation = punto;
-                foundType = 'punto';
-            }
-        }
-    });
-
-    servicios.forEach(servicio => {
-        if (servicio.location && servicio.location.coordinates) {
-            const servicioLatLng = L.latLng(servicio.location.coordinates[1], servicio.location.coordinates[0]);
-            const distance = servicioLatLng.distanceTo(latlng);
-            if (distance < 100) {
-                foundLocation = servicio;
-                foundType = 'servicio';
-            }
-        }
-    });
-
-    if (foundLocation) {
-        createReview(foundLocation._id, foundType);
-    } else {
-        showMessage('No se encontró un Punto de Interés o Servicio en esta ubicación. Primero crea un lugar.', 'warning');
-    }
-}
-
-async function createReview(locationId, locationType) {
-    let calificacion;
-    
-    do {
-        calificacion = prompt('Calificación (1-5 estrellas):');
-        if (calificacion === null) {
-            cancelDrawing();
-            return;
-        }
-        calificacion = parseInt(calificacion);
-    } while (isNaN(calificacion) || calificacion < 1 || calificacion > 5);
-
-    const opinion = prompt('Tu opinión:');
-    if (!opinion) {
-        showMessage('La opinión es requerida', 'error');
-        return;
-    }
-
-    const reviewData = {
-        user: currentUser._id,
-        calificacion: calificacion,
-        opinion: opinion,
-        servicioTuristico: locationId
-    };
-
-    try {
-        const response = await fetch(API_BASE + '/review', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(reviewData)
-        });
-
-        if (response.ok) {
-            showMessage('Reseña agregada exitosamente', 'success');
-            cancelDrawing();
-            
-            setTimeout(() => {
-                localStorage.setItem('currentPlaceId', locationId);
-                localStorage.setItem('currentPlaceType', locationType);
-                window.location.href = '/resenas';
-            }, 1000);
-        } else {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error al crear la reseña');
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        showMessage('Error al crear la reseña: ' + error.message, 'error');
     }
 }
 
@@ -777,12 +714,230 @@ function updateTable() {
     });
 }
 
+// ===== FUNCIONALIDAD DE BÚSQUEDA =====
+
+function performSearch() {
+    const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (!searchTerm) {
+        showMessage('Ingresa un término de búsqueda', 'warning');
+        return;
+    }
+
+    // Limpiar highlight anterior
+    clearHighlight();
+
+    // Buscar en puntos de interés
+    let foundItem = null;
+    let foundType = null;
+    
+    // Buscar en puntos de interés
+    puntosInteres.forEach(punto => {
+        if (punto.nombre.toLowerCase().includes(searchTerm) || 
+            punto.descripcion.toLowerCase().includes(searchTerm)) {
+            foundItem = punto;
+            foundType = 'punto';
+        }
+    });
+
+    // Si no se encontró en puntos, buscar en servicios
+    if (!foundItem) {
+        servicios.forEach(servicio => {
+            if (servicio.nombre.toLowerCase().includes(searchTerm) || 
+                servicio.descripcion.toLowerCase().includes(searchTerm)) {
+                foundItem = servicio;
+                foundType = 'servicio';
+            }
+        });
+    }
+
+    // Si no se encontró en servicios, buscar en zonas
+    if (!foundItem) {
+        zonas.forEach(zona => {
+            if (zona.nombre.toLowerCase().includes(searchTerm) || 
+                zona.descripcion.toLowerCase().includes(searchTerm)) {
+                foundItem = zona;
+                foundType = 'zona';
+            }
+        });
+    }
+
+    if (foundItem) {
+        highlightAndCenter(foundItem, foundType);
+        showMessage(`Encontrado: ${foundItem.nombre}`, 'success');
+    } else {
+        showMessage('No se encontraron resultados para: ' + searchTerm, 'error');
+    }
+}
+
+function highlightAndCenter(item, type) {
+    // Limpiar highlight anterior
+    clearHighlight();
+
+    let latLng;
+    let layer;
+
+    if (type === 'punto' || type === 'servicio') {
+        // Buscar el marcador correspondiente
+        markersLayer.getLayers().forEach(markerLayer => {
+            if (markerLayer._id === item._id) {
+                layer = markerLayer;
+                
+                // Crear un icono destacado
+                const highlightIcon = createHighlightIcon(
+                    type === 'punto' ? '#e74c3c' : '#3498db',
+                    type === 'punto' ? 'fa-landmark' : 'fa-concierge-bell'
+                );
+                
+                markerLayer.setIcon(highlightIcon);
+                markerLayer.addTo(map);
+                latLng = markerLayer.getLatLng();
+                
+                currentHighlight = markerLayer;
+                currentHighlightLayer = markersLayer;
+            }
+        });
+    } else if (type === 'zona') {
+        // Buscar la zona correspondiente
+        zonasLayer.getLayers().forEach(zoneLayer => {
+            if (zoneLayer._id === item._id) {
+                layer = zoneLayer;
+                
+                // Aplicar estilo destacado
+                zoneLayer.setStyle({
+                    color: '#FFC107',
+                    fillColor: '#FFC107',
+                    fillOpacity: 0.4,
+                    weight: 4,
+                    className: 'highlighted-polygon'
+                });
+                
+                latLng = zoneLayer.getBounds().getCenter();
+                currentHighlight = zoneLayer;
+                currentHighlightLayer = zonasLayer;
+            }
+        });
+    }
+
+    if (latLng) {
+        // Centrar el mapa en la ubicación con zoom más cercano
+        map.setView(latLng, 16);
+        
+        // Abrir el popup si es un marcador
+        if (layer && layer.openPopup) {
+            setTimeout(() => {
+                layer.openPopup();
+            }, 500);
+        }
+    }
+}
+
+function createHighlightIcon(color, iconClass) {
+    return L.divIcon({
+        html: `
+            <div class="highlighted-marker">
+                <i class="fas ${iconClass}" style="
+                    color: ${color}; 
+                    font-size: 24px; 
+                    background: white; 
+                    padding: 12px; 
+                    border-radius: 50%; 
+                    border: 3px solid ${color};
+                    box-shadow: 0 0 20px rgba(255, 193, 7, 0.8);
+                "></i>
+            </div>`,
+        className: 'custom-icon',
+        iconSize: [48, 48],
+        iconAnchor: [24, 24]
+    });
+}
+
+function clearHighlight() {
+    if (currentHighlight && currentHighlightLayer) {
+        // Restaurar estilo original
+        if (currentHighlight.setIcon) {
+            // Es un marcador
+            const originalIcon = createCustomIcon(
+                currentHighlight._id.includes('punto') ? '#e74c3c' : '#3498db',
+                currentHighlight._id.includes('punto') ? 'fa-landmark' : 'fa-concierge-bell'
+            );
+            currentHighlight.setIcon(originalIcon);
+        } else if (currentHighlight.setStyle) {
+            // Es una zona
+            const isRectangle = currentHighlight.getBounds ? 'rectangle' : 'polygon';
+            currentHighlight.setStyle({
+                color: isRectangle === 'rectangle' ? '#e74c3c' : '#3498db',
+                fillColor: isRectangle === 'rectangle' ? '#e74c3c' : '#3498db',
+                fillOpacity: 0.2,
+                weight: 2,
+                className: ''
+            });
+        }
+        
+        currentHighlight = null;
+        currentHighlightLayer = null;
+    }
+}
+
 function filterTable(searchTerm) {
     const rows = document.querySelectorAll('#locationsTable tr');
+    let foundInTable = false;
+    
     rows.forEach(row => {
         const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm.toLowerCase()) ? '' : 'none';
+        if (text.includes(searchTerm.toLowerCase())) {
+            row.style.display = '';
+            row.style.backgroundColor = 'rgba(112, 179, 201, 0.2)';
+            row.style.fontWeight = '600';
+            foundInTable = true;
+            
+            // También buscar y centrar en el mapa
+            const nombre = row.cells[0].textContent;
+            performMapSearch(nombre);
+        } else {
+            row.style.display = 'none';
+            row.style.backgroundColor = '';
+            row.style.fontWeight = '';
+        }
     });
+    
+    if (!foundInTable && searchTerm) {
+        showMessage('No se encontró en la tabla', 'info');
+    }
+}
+
+function performMapSearch(nombre) {
+    const searchTerm = nombre.toLowerCase();
+    
+    // Limpiar highlight anterior
+    clearHighlight();
+    
+    // Buscar y resaltar en el mapa
+    let found = false;
+    
+    puntosInteres.forEach(punto => {
+        if (punto.nombre.toLowerCase().includes(searchTerm)) {
+            highlightAndCenter(punto, 'punto');
+            found = true;
+        }
+    });
+    
+    if (!found) {
+        servicios.forEach(servicio => {
+            if (servicio.nombre.toLowerCase().includes(searchTerm)) {
+                highlightAndCenter(servicio, 'servicio');
+                found = true;
+            }
+        });
+    }
+    
+    if (!found) {
+        zonas.forEach(zona => {
+            if (zona.nombre.toLowerCase().includes(searchTerm)) {
+                highlightAndCenter(zona, 'zona');
+                found = true;
+            }
+        });
+    }
 }
 
 function showMessage(text, type) {
@@ -796,7 +951,8 @@ function showMessage(text, type) {
     }, 3000);
 }
 
-// Funciones globales
+// ===== FUNCIONES GLOBALES =====
+
 window.cancelZonaCreation = function() {
     map.closePopup();
     cancelDrawing();
@@ -813,6 +969,84 @@ window.editLocation = async function(id, tipo) {
         try {
             const endpoint = tipo === 'punto' ? '/pinteres' : '/servicio';
             const response = await fetch(API_BASE + endpoint + '/' + id, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ nombre, descripcion })
+            });
+
+            if (response.ok) {
+                loadData();
+                showMessage('Ubicación actualizada exitosamente', 'success');
+            }
+        } catch (error) {
+            showMessage('Error al actualizar la ubicación', 'error');
+        }
+    }
+};
+
+// Moving
+let moveHandler = null;
+
+window.moveLocation = function(id, tipo) {
+    map.closePopup();
+
+    showMessage("Da click en un nuevo punto del mapa para mover la ubicación...", "info");
+
+    // Por si acaso
+    if (moveHandler) {
+        map.off("click", moveHandler);
+        moveHandler = null;
+    }
+
+    moveHandler = async function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+
+        map.off("click", moveHandler);
+        moveHandler = null;
+
+        try {
+            const endpoint = tipo === "punto" ? "/pinteres" : "/servicio";
+
+            const response = await fetch(API_BASE + endpoint + "/" + id, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ 
+                    location : {
+                    type : "Point",
+                    coordinates: [lng, lat]
+                }})
+            });
+
+            if (response.ok) {
+                loadData();
+                showMessage("Ubicación actualizada exitosamente", "success");
+            } else {
+                showMessage("Error al actualizar la ubicación", "error");
+            }
+        } catch (error) {
+            showMessage("Error al actualizar la ubicación", "error");
+        }
+    };
+
+    // Activar escucha del clic
+    map.on("click", moveHandler);
+};
+
+window.editZona = async function(id) {
+    const nombre = prompt('Nuevo nombre:');
+    if (nombre === null) return;
+    
+    const descripcion = prompt('Nueva descripción:');
+    if (descripcion === null) return;
+    
+    if (nombre && descripcion) {
+        try {
+            const response = await fetch(API_BASE + '/zona/' + id, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
@@ -868,5 +1102,5 @@ window.deleteZona = async function(id) {
 window.verResenas = function(id, tipo) {
     localStorage.setItem('currentPlaceId', id);
     localStorage.setItem('currentPlaceType', tipo);
-    window.location.href = '/reviews.html';
+    window.location.href = 'reviews.html';
 };
