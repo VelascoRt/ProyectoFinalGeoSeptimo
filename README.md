@@ -45,7 +45,8 @@ Sigue estos pasos para ejecutar el proyecto en tu entorno local:
 ### 1. Clonar el repositorio
 ``` bash
 git clone [https://github.com/TU_USUARIO/ProyectoFinalGeoSeptimo.git](https://github.com/TU_USUARIO/ProyectoFinalGeoSeptimo.git)
-cd ProyectoFinalGeoSeptimo ```
+cd ProyectoFinalGeoSeptimo 
+```
 
 
 
@@ -53,7 +54,8 @@ cd ProyectoFinalGeoSeptimo ```
 
 Dado que el frontend y el backend comparten el package.json en la raíz, solo necesitas ejecutar:
 ``` bash
-npm install ```
+npm install 
+```
 
 
 
@@ -73,7 +75,8 @@ Opción A: Modo Desarrollo (Recomendado)
 
 Inicia ambos servidores (Backend en puerto 3001 y Frontend en puerto 3000) con un solo comando:
 ``` bash
-npm run dev```
+npm run dev
+```
 
 
 
@@ -83,14 +86,16 @@ Si prefieres correrlos en terminales separadas para depuración:
 
 Terminal 1 (Backend - API):
 ``` bash
-npm run api```
+npm run api
+```
 # Deberías ver: "My server is running on port: 3001" y "Conexion a MongoDB exitosa"
 
 
 
 Terminal 2 (Frontend - React):
 ``` bash 
-npm start```
+npm start
+```
 # Abrirá http://localhost:3000 en tu navegador
 
 
@@ -146,7 +151,8 @@ PROYECTOFINALGEOSEPTIMO/
 
 Primero corre el comando:
 ``` bash
-npm i ```
+npm i 
+```
 
 ### Después crea el archivo .env y agrega la variable de MONGODB:
 
@@ -155,7 +161,8 @@ MONGODB=TUCONNECT
 Y solamente corre npm run api o npm start para correr la API o el frontend.
 o
 ``` bash 
-npm run dev```
+npm run dev
+```
 
 ### Para correr ambas.
 
@@ -163,11 +170,13 @@ Scripts Disponibles
 
 ### In the project directory, you can run:
 ``` bash 
-npm run api```
+npm run api
+```
 
 ### Para correr la API.
 ``` bash 
-npm start```
+npm start
+```
 
 ### Runs the app in the development mode.
 
@@ -177,13 +186,15 @@ The page will reload when you make changes.
 
 You may also see any lint errors in the console.
 ``` bash
-npm test```
+npm test
+```
 
 Launches the test runner in the interactive watch mode.
 
 See the section about running tests for more information.
 ``` bash 
-npm run build```
+npm run build
+```
 
 Builds the app for production to the build folder.
 
@@ -195,7 +206,8 @@ Your app is ready to be deployed!
 
 See the section about deployment for more information.
 ``` bash
-npm run eject```
+npm run eject
+```
 
 Modelos
 
