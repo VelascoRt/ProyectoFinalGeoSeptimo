@@ -44,9 +44,7 @@ Sigue estos pasos para ejecutar el proyecto en tu entorno local:
 
 ### 1. Clonar el repositorio
 ``` bash
-git clone [https://github.com/TU_USUARIO/ProyectoFinalGeoSeptimo.git](https://github.com/TU_USUARIO/ProyectoFinalGeoSeptimo.git)```
-
-```bash
+git clone [https://github.com/TU_USUARIO/ProyectoFinalGeoSeptimo.git](https://github.com/TU_USUARIO/ProyectoFinalGeoSeptimo.git)
 cd ProyectoFinalGeoSeptimo ```
 
 
