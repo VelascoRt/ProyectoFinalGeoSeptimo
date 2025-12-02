@@ -47,7 +47,7 @@ body {
 
 .btn-secondary {
     background: transparent;
-    color: var(--primary-dark);
+    color: var(--sky-blue);
     border: 2px solid var(--primary-dark);
 }
 
