@@ -18,7 +18,7 @@ router.get("/",async(req,res) => {
 router.get("/:id",async (req,res) => {
   try {
     const {id} = req.params;
-    const data = await service.getById(id);
+    const data = await service.getByID(id);
     res.json(data);
   } catch (e) {
     res.status(400).json({ message: e.message });
@@ -39,6 +39,22 @@ router.post("/",async(req,res)=> {
   }
 
 });
+
+// LOGIN
+router.post("/login",async(req,res)=> {
+  try {
+    const {username, password} = req.body;
+    const newLogin = await service.login(username,password);
+    res.status(201).json({
+        message: "Login Correcto",
+        data: newLogin
+      });
+  } catch (e) {
+    res.status(400).json({ message: e.message });
+  }
+    
+});
+
 
 // PATCH / UPDATE
 router.patch("/:id",async(req,res)=> {

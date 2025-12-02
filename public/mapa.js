@@ -211,8 +211,8 @@ function startPolygonDrawing() {
         // Solo dibujar si hay al menos 2 puntos
         if (polygonPoints.length >= 2) {
             currentPolygon = L.polygon(polygonPoints, {
-                color: '#27ae60',
-                fillColor: '#27ae60',
+                color: "#27ae60",
+                fillColor: "#27ae60",
                 fillOpacity: 0.3,
                 weight: 2
             }).addTo(map);
@@ -247,9 +247,12 @@ function finishPolygonDrawing() {
     }
 }
 
+
+
 function startRectangleDrawing() {
     let startPoint = null;
     let rectangle = null;
+    map.dragging.disable();
 
     const mouseDownHandler = function(e) {
         startPoint = e.latlng;
@@ -259,12 +262,15 @@ function startRectangleDrawing() {
             fillOpacity: 0.3,
             weight: 2
         }).addTo(map);
+        
     };
 
     const mouseMoveHandler = function(e) {
+        
         if (rectangle && startPoint) {
             const bounds = L.latLngBounds([startPoint, e.latlng]);
             rectangle.setBounds(bounds);
+            
         }
     };
 
@@ -273,14 +279,16 @@ function startRectangleDrawing() {
             const bounds = rectangle.getBounds();
             const area = (bounds.getNorth() - bounds.getSouth()) * (bounds.getEast() - bounds.getWest());
             
-            if (Math.abs(area) < 0.0001) {
+            if (Math.abs(area) < 0.000001) {
                 showMessage('El rectángulo es muy pequeño. Intenta con un área más grande.', 'warning');
                 map.removeLayer(rectangle);
             } else {
                 showRectangleCreationForm(rectangle);
+                console.log("sip")
             }
-            
+            map.dragging.enable();
             cleanupRectangleDrawing();
+            map.removeLayer(rectangle);
         }
     };
 
@@ -495,6 +503,8 @@ function showRectangleCreationForm(rectangle) {
         .setContent(form)
         .openOn(map);
 
+    console.log("sip1")
+
     document.getElementById('rectangleForm').addEventListener('submit', async function(e) {
         e.preventDefault();
         const nombre = document.getElementById('zonaNombre').value;
@@ -510,12 +520,10 @@ function showRectangleCreationForm(rectangle) {
                 sur: bounds.getSouth(),
                 este: bounds.getEast(),
                 oeste: bounds.getWest()
-            },
-            centro: {
-                lat: bounds.getCenter().lat,
-                lng: bounds.getCenter().lng
             }
         };
+
+        console.log("sip2")
 
         await saveZona(zonaData, rectangle);
         map.closePopup(popup);
@@ -535,9 +543,9 @@ async function saveZona(zonaData, layer) {
         if (response.ok) {
             const newZona = await response.json();
             layer._id = newZona._id;
-            layer.bindPopup(createZonaPopupContent(newZona));
+            layer.bindPopup(createZonaPopupContent(newZona,));
             zonasLayer.addLayer(layer);
-            updateTable();
+            loadData();
             showMessage('Zona creada exitosamente', 'success');
             cancelDrawing();
         } else {
@@ -551,14 +559,14 @@ async function saveZona(zonaData, layer) {
 
 function cancelDrawing() {
     cleanupDrawing();
+    document.getElementById("finishPolygonBtn").style.display = "none";
     currentAction = null;
     drawingMode = false;
+    map.dragging.enable();
     
     document.querySelectorAll('.tool-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    
-    showMessage('Modo de creación cancelado', 'info');
 }
 
 async function loadData() {
@@ -660,6 +668,9 @@ function createPopupContent(item, tipo) {
                 <button onclick="deleteLocation('${item._id}', '${tipo}')" class="btn btn-danger btn-sm">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>
+                <button onclick="moveLocation('${item._id}', '${tipo}')" class="btn btn-success btn-sm">
+                    <i class="fas fa-arrows"></i> Mover
+                </button>
                 <button onclick="verResenas('${item._id}', '${tipo}')" class="btn btn-primary btn-sm">
                     <i class="fas fa-star"></i> Reseñas
                 </button>
@@ -675,6 +686,9 @@ function createZonaPopupContent(zona) {
             <p>${zona.descripcion}</p>
             <p><strong>Tipo:</strong> ${zona.tipo}</p>
             <div class="popup-actions">
+                <button onclick="editZona('${zona._id}')" class="btn btn-warning btn-sm">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
                 <button onclick="deleteZona('${zona._id}')" class="btn btn-danger btn-sm">
                     <i class="fas fa-trash"></i> Eliminar
                 </button>

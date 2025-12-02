@@ -18,7 +18,7 @@ router.get("/",async(req,res) => {
 router.get("/:id",async (req,res) => {
   try {
     const {id} = req.params;
-    const data = await service.getById(id);
+    const data = await service.getByID(id);
     res.json(data);
   } catch (e) {
     res.status(400).json({ message: e.message });

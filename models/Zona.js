@@ -47,7 +47,6 @@ const ZonaSchema = new mongoose.Schema({
 });
 
 // Índices para búsquedas geoespaciales
-ZonaSchema.index({ 'centro': '2dsphere' });
 ZonaSchema.index({ nombre: 'text', descripcion: 'text' });
 
 // Método para obtener las coordenadas en formato Leaflet
