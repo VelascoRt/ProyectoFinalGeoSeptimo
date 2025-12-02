@@ -132,6 +132,7 @@ DELETE /review/:reviewId: Eliminar una reseña.
 
 ### 📂 Estructura del Proyecto
 
+```
 PROYECTOFINALGEOSEPTIMO/
 ├── models/             # Esquemas de Mongoose (User, PInteres, Review)
 ├── routes/             # Definición de rutas de Express
@@ -144,7 +145,7 @@ PROYECTOFINALGEOSEPTIMO/
 │   └── index.js        # Punto de entrada de React
 ├── API.js              # Archivo principal del servidor Express
 └── package.json        # Dependencias y scripts
-
+```
 
 
 ### Antes de iniciar
@@ -215,7 +216,7 @@ PInteres
 
 ### Puntos de interés
 Ejemplo:
-
+```
 {    
     "nombre": "Plaza Mayor",
     "descripcion": "Esta es la famosa plaza mayor de León Guanajuato, es una plaza en León Guanajuato",
@@ -224,26 +225,26 @@ Ejemplo:
         "coordinates": [-101.69524669647218, 21.15743637827049]
     }
 }
-
+```
 
 ### Review
 
 Reseñas de cada Servicio, ocupa un usuario y un servicio
 Ejemplo:
-
+```
 {
     "user" : "6928db0d57f5edc5e9d084c4",
     "calificacion" : 5,
     "opinion" : "Es una buena plaza en mi opinion",
     "servicioTuristico" : "6927e36098685bd72dbd406e"
 }
-
+```
 
 
 ### Servicio
 
 Servicio turistico, ocupa coordenadas.
-
+```
 {    
     "id": 1,
     "nombre": "Plaza Mayor",
@@ -253,25 +254,25 @@ Servicio turistico, ocupa coordenadas.
         "coordinates": [-101.69524669647218, 21.15743637827049]
     }
 }
-
+```
 
 ### USER
 
 Usuario
 Ejemplo:
-
+```
 {
     "username" : "atervictor",
     "password" : "ADS131312DASDASDMKÑ"
 }
-
+```
 
 ### ZONA
 
 Zona, puedes escoger entre poligonos, cuadrado, circulo y marcador.
 
 Ejemplo:
-
+```
 {
   "nombre": "Zona Arqueológica Principal",
   "descripcion": "Polígono de prueba para un área arqueológica.",
@@ -286,15 +287,13 @@ Ejemplo:
     ]
   ]
 }
-
-
-SI llego a esta parte favor de dejar su like y compartir el video
+```
 
 ✒️ Autores
 
-Victor Manuel Ortiz Feregrino
-Edgar Emilio Salcedo Elías
-Marco Antonio Sánchez Murillo
+- Victor Manuel Ortiz Feregrino
+- Edgar Emilio Salcedo Elías
+- Marco Antonio Sánchez Murillo
 
 
 📄 Licencia
