@@ -1,0 +1,27 @@
+version: "3.9"
+
+networks:
+  appnet:
+    driver: bridge
+
+services:
+  api:
+    build: ./backend
+    container_name: Trotamundos_API
+    ports:
+      - "3000:3000"
+    networks:
+      - appnet
+    environment:
+      MONGODB : ${MONGODB}
+
+  web:
+    build: ./frontend
+    container_name: Trotamundos_Front
+    ports:
+      - "80:80"
+    networks:
+      - appnet
+    depends_on:
+      - api
+
